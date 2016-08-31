@@ -40,7 +40,7 @@ for argsInfile in args.infiles:
         filedata = []
         reader = csv.reader(infile)
         for row in reader:
-            filedata.append(map(lambda s: int(s), row))
+            filedata.append(map(lambda s: float(s), row))
         alldata.append(filedata)
         mus.append(map(lambda arr: np.mean(arr), filedata))
         sigmas.append(map(lambda arr: np.std(arr), filedata))
