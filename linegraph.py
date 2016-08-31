@@ -28,6 +28,7 @@ parser.add_argument('--bottom', type=float)
 parser.add_argument('--aspect', type=float)
 parser.add_argument('--sigma', nargs='+')
 parser.add_argument('--mu', required=True, nargs='+')
+parser.add_argument('--names', required=True, nargs='+')
 args = parser.parse_args()
 
 # data
@@ -46,9 +47,9 @@ for argsInfile in args.infiles:
 
 if args.xs:
     bounds = map(lambda n: int(n), args.xs.split(':'))
-    ks = range(bounds[0], bounds[1])
+    xs = range(bounds[0], bounds[1])
 else:
-    ks = range(0,len(mus[0]))
+    xs = range(0,len(mus[0]))
 
 # upper and limits
 mu = reduce(lambda acc, x: acc + x, mus)
@@ -68,7 +69,7 @@ if args.aspect:
     fig = plt.figure(figsize=(w,h))
 else:
     fig = plt.figure()
-xlim = (min(ks), max(ks))
+xlim = (min(xs), max(xs))
 ylim = (ymin, ymax)
 ax = fig.add_subplot(1, 1, 1, xlim=xlim, ylim=ylim)
 
@@ -79,18 +80,18 @@ def mixer1(a, b):
 mix = 0.25
 
 # interpolate data
-n_smooth = np.linspace(min(ks), max(ks), 1024)
+n_smooth = np.linspace(min(xs), max(xs), 1024)
 
 for i in range(0,len(args.mu)):
-    mu_1 = (interp1d(ks, mus[i], kind='slinear'))(n_smooth)
-    sigma_1 = (interp1d(ks, sigmas[i], kind='slinear'))(n_smooth)
-    sigma_2 = (interp1d(ks, sigmas[i], kind='cubic'))(n_smooth)
+    mu_1 = (interp1d(xs, mus[i], kind='slinear'))(n_smooth)
+    sigma_1 = (interp1d(xs, sigmas[i], kind='slinear'))(n_smooth)
+    sigma_2 = (interp1d(xs, sigmas[i], kind='cubic'))(n_smooth)
     sigma_3 = map(mixer1, sigma_1, sigma_2)
     top = map(lambda x, y: x+y, mu_1, sigma_3)
     bot = map(lambda x, y: x-y, mu_1, sigma_3)
     if ((type(args.sigma) == type([])) and (len(args.sigma) > i)):
         ax.fill_between(n_smooth, bot, top, facecolor=args.sigma[i], alpha=0.75, zorder=i)
-    ax.plot(ks, mus[i], label=args.infiles[i], color=args.mu[i], linewidth=3, zorder=(i + 0.5))
+    ax.plot(xs, mus[i], label=args.names[i], color=args.mu[i], linewidth=3, zorder=(i + 0.5))
 
 # labeling and what-not
 ax.set_ylabel(args.ylabel, fontdict={'size': 22})
