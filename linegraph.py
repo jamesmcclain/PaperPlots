@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# Copyright (c) 2002-2016, James McClain
+# All rights reserved.
+
 from __future__ import print_function
 from __future__ import unicode_literals
 from __future__ import division
@@ -14,15 +17,17 @@ from scipy.interpolate import interp1d
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('infiles', nargs='+')
+parser.add_argument('--infiles', required=True, nargs='+')
 parser.add_argument('--outfile')
 parser.add_argument('--title')
+parser.add_argument('--xs', type=str)
 parser.add_argument('--xlabel', default=r'$x$')
 parser.add_argument('--ylabel', default=r'$y$')
 parser.add_argument('--top', type=float)
 parser.add_argument('--bottom', type=float)
 parser.add_argument('--aspect', type=float)
-parser.add_argument('--scale', default='linear')
+parser.add_argument('--sigma', nargs='+')
+parser.add_argument('--mu', required=True, nargs='+')
 args = parser.parse_args()
 
 # data
@@ -39,10 +44,15 @@ for argsInfile in args.infiles:
         mus.append(map(lambda arr: np.mean(arr), filedata))
         sigmas.append(map(lambda arr: np.std(arr), filedata))
 
+if args.xs:
+    bounds = map(lambda n: int(n), args.xs.split(':'))
+    ks = range(bounds[0], bounds[1])
+else:
+    ks = range(0,len(mus[0]))
+
 # upper and limits
 mu = reduce(lambda acc, x: acc + x, mus)
 sigma = reduce(lambda acc, x: acc + x, sigmas)
-ks = range(4,31) # XXX
 if args.bottom:
     ymin = args.bottom
 else:
@@ -71,29 +81,16 @@ mix = 0.25
 # interpolate data
 n_smooth = np.linspace(min(ks), max(ks), 1024)
 
-# one
-one_mu_1 = (interp1d(ks, mus[0], kind='slinear'))(n_smooth)
-one_sigma_1 = (interp1d(ks, sigmas[0], kind='slinear'))(n_smooth)
-one_sigma_2 = (interp1d(ks, sigmas[0], kind='cubic'))(n_smooth)
-one_sigma_3 = map(mixer1, one_sigma_1, one_sigma_2)
-one_top = map(lambda x, y: x+y, one_mu_1, one_sigma_3)
-one_bot = map(lambda x, y: x-y, one_mu_1, one_sigma_3)
-
-# two
-two_mu_1 = (interp1d(ks, mus[1], kind='slinear'))(n_smooth)
-two_sigma_1 = (interp1d(ks, sigmas[1], kind='slinear'))(n_smooth)
-two_sigma_2 = (interp1d(ks, sigmas[1], kind='cubic'))(n_smooth)
-two_sigma_3 = map(mixer1, two_sigma_1, two_sigma_2)
-two_top = map(lambda x, y: x+y, two_mu_1, two_sigma_3)
-two_bot = map(lambda x, y: x-y, two_mu_1, two_sigma_3)
-
-# one
-ax.fill_between(n_smooth, one_bot, one_top, facecolor="#7f7fff", alpha=0.75, zorder=2.0)
-ax.plot(ks, mus[0], label=args.infiles[0], color="#0000ff", linewidth=3, zorder=2.5)
-
-# two
-ax.fill_between(n_smooth, two_bot, two_top, facecolor="#7f7f7f", alpha=0.75, zorder=1.0)
-ax.plot(ks, mus[0], label=args.infiles[1], color="#16161d", linewidth=3, zorder=1.5)
+for i in range(0,len(args.mu)):
+    mu_1 = (interp1d(ks, mus[i], kind='slinear'))(n_smooth)
+    sigma_1 = (interp1d(ks, sigmas[i], kind='slinear'))(n_smooth)
+    sigma_2 = (interp1d(ks, sigmas[i], kind='cubic'))(n_smooth)
+    sigma_3 = map(mixer1, sigma_1, sigma_2)
+    top = map(lambda x, y: x+y, mu_1, sigma_3)
+    bot = map(lambda x, y: x-y, mu_1, sigma_3)
+    if ((type(args.sigma) == type([])) and (len(args.sigma) > i)):
+        ax.fill_between(n_smooth, bot, top, facecolor=args.sigma[i], alpha=0.75, zorder=i)
+    ax.plot(ks, mus[i], label=args.infiles[i], color=args.mu[i], linewidth=3, zorder=(i + 0.5))
 
 # labeling and what-not
 ax.set_ylabel(args.ylabel, fontdict={'size': 22})
